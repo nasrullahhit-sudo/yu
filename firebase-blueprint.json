@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "StudioProject": {
+      "title": "StudioProject",
+      "description": "A saved Nasrullah Studio voiceover, 2-character dialogue, or voice-to-voice dubbing project owned by an authenticated user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique project document ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the project owner",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "projectType": {
+          "type": "string",
+          "description": "Type of studio project",
+          "enum": ["voiceover", "dialogue", "dubbing"],
+          "maxLength": 32
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable project title",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "voiceName": {
+          "type": "string",
+          "description": "Primary voice persona ID",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "secondaryVoiceName": {
+          "type": "string",
+          "description": "Second speaker voice persona ID for dialogue projects",
+          "maxLength": 40
+        },
+        "speaker1Name": {
+          "type": "string",
+          "description": "Display name for Speaker 1",
+          "maxLength": 60
+        },
+        "speaker2Name": {
+          "type": "string",
+          "description": "Display name for Speaker 2",
+          "maxLength": 60
+        },
+        "scriptText": {
+          "type": "string",
+          "description": "Full Bengali/Hindi/English script or transcript text",
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "dialogueLines": {
+          "type": "array",
+          "description": "Bounded list of up to 24 dialogue turns (each map has id, speaker, text, emotion)"
+        },
+        "voicePitch": {
+          "type": "number",
+          "description": "Custom pitch shift in semitones (-6 to 6)"
+        },
+        "voiceSpeed": {
+          "type": "number",
+          "description": "Custom speech speed multiplier (0.75 to 1.35)"
+        },
+        "voiceEcho": {
+          "type": "number",
+          "description": "Custom echo/reverb percentage (0 to 100)"
+        },
+        "voiceEmotion": {
+          "type": "string",
+          "description": "Selected emotion preset",
+          "enum": ["auto", "happy", "sad", "angry", "whisper", "scary", "excited"],
+          "maxLength": 32
+        },
+        "language": {
+          "type": "string",
+          "description": "Project language code",
+          "enum": ["bn", "hi", "en", "original"],
+          "maxLength": 16
+        },
+        "durationSec": {
+          "type": "number",
+          "description": "Estimated or generated audio duration in seconds (0 to 3600)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the project was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the project was last updated"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "projectType",
+        "title",
+        "voiceName",
+        "secondaryVoiceName",
+        "speaker1Name",
+        "speaker2Name",
+        "scriptText",
+        "dialogueLines",
+        "voicePitch",
+        "voiceSpeed",
+        "voiceEcho",
+        "voiceEmotion",
+        "language",
+        "durationSec",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/StudioProject" },
+      "description": "Private user-owned voiceover, dialogue, and voice-to-voice dubbing projects."
+    }
+  }
+}

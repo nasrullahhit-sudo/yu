@@ -1,0 +1,154 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened global primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidDialogueLines(lines) {
+      return lines is list
+        && lines.size() <= 24
+        && (lines.size() == 0 || (
+          lines[0] is map
+          && lines[0].keys().hasAll(['id', 'speaker', 'text', 'emotion'])
+          && lines[0].keys().hasOnly(['id', 'speaker', 'text', 'emotion'])
+          && lines[0].id is string && lines[0].id.size() >= 1 && lines[0].id.size() <= 64
+          && (lines[0].speaker == 1 || lines[0].speaker == 2)
+          && lines[0].text is string && lines[0].text.size() <= 1500
+          && lines[0].emotion is string && lines[0].emotion.size() <= 32
+        ));
+    }
+
+    // Standalone Validation Blueprint enforced on BOTH create and update
+    function isValidStudioProject(data) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'projectType',
+          'title',
+          'voiceName',
+          'secondaryVoiceName',
+          'speaker1Name',
+          'speaker2Name',
+          'scriptText',
+          'dialogueLines',
+          'voicePitch',
+          'voiceSpeed',
+          'voiceEcho',
+          'voiceEmotion',
+          'language',
+          'durationSec',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'projectType',
+          'title',
+          'voiceName',
+          'secondaryVoiceName',
+          'speaker1Name',
+          'speaker2Name',
+          'scriptText',
+          'dialogueLines',
+          'voicePitch',
+          'voiceSpeed',
+          'voiceEcho',
+          'voiceEmotion',
+          'language',
+          'durationSec',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.projectType is string && data.projectType.size() <= 32 && data.projectType in ['voiceover', 'dialogue', 'dubbing']
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.voiceName is string && data.voiceName.size() >= 1 && data.voiceName.size() <= 40
+        && data.secondaryVoiceName is string && data.secondaryVoiceName.size() <= 40
+        && data.speaker1Name is string && data.speaker1Name.size() <= 60
+        && data.speaker2Name is string && data.speaker2Name.size() <= 60
+        && data.scriptText is string && data.scriptText.size() >= 1 && data.scriptText.size() <= 12000
+        && isValidDialogueLines(data.dialogueLines)
+        && data.voicePitch is number && data.voicePitch >= -6 && data.voicePitch <= 6
+        && data.voiceSpeed is number && data.voiceSpeed >= 0.75 && data.voiceSpeed <= 1.35
+        && data.voiceEcho is number && data.voiceEcho >= 0 && data.voiceEcho <= 100
+        && data.voiceEmotion is string && data.voiceEmotion.size() <= 32 && data.voiceEmotion in ['auto', 'happy', 'sad', 'angry', 'whisper', 'scary', 'excited']
+        && data.language is string && data.language.size() <= 16 && data.language in ['bn', 'hi', 'en', 'original']
+        && data.durationSec is number && data.durationSec >= 0 && data.durationSec <= 3600
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /projects/{projectId} {
+      allow get: if isSignedIn()
+        && isValidId(projectId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(projectId)
+        && isValidStudioProject(incoming())
+        && incoming().id == projectId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(projectId)
+        && isValidStudioProject(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().id == existing().id
+        && incoming().projectType == existing().projectType
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title',
+          'voiceName',
+          'secondaryVoiceName',
+          'speaker1Name',
+          'speaker2Name',
+          'scriptText',
+          'dialogueLines',
+          'voicePitch',
+          'voiceSpeed',
+          'voiceEcho',
+          'voiceEmotion',
+          'language',
+          'durationSec',
+          'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser()
+        && isValidId(projectId)
+        && existing().ownerId == request.auth.uid;
+    }
+  }
+}
